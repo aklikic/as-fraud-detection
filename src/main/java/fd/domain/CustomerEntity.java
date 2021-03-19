@@ -1,5 +1,6 @@
 package fd.domain;
 
+import akka.event.slf4j.Logger;
 import com.google.protobuf.Empty;
 import fd.Mappers;
 import fd.Service;
@@ -106,7 +107,7 @@ public class CustomerEntity {
     public void transactionAdded(Domain.TransactionAdded event) {
         Instant transTimestamp = Instant.ofEpochMilli(event.getTrans().getTimestamp());
         if(transTimestamp.isAfter(Instant.now().minus(customer.getRule().getTransBacktrackHours(), ChronoUnit.HOURS)))
-            customer.toBuilder().addTrans(event.getTrans());
+            customer=customer.toBuilder().addTrans(event.getTrans()).build();
     }
     @EventHandler
     public void transactionRemoved(Domain.TransactionRemoved event) {

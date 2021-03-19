@@ -58,7 +58,7 @@ message UpdateFraudDetectionRuleCommand {
 service CustomerFraudDetection {
     rpc CreateCustomer(CreateCustomerCommand) returns (google.protobuf.Empty){
         option (google.api.http) = {
-            post: "/customers/{customer_id}",
+            post: "/customers/add",
             body: "*",
         };
     };
@@ -69,13 +69,13 @@ service CustomerFraudDetection {
     };
     rpc UpdateFraudDetectionRule(UpdateFraudDetectionRuleCommand) returns (google.protobuf.Empty){
         option (google.api.http) = {
-            post: "/customers/{customer_id}/fraud-detection-rule",
+            post: "/customers/update-fraud-detection-rule",
             body: "*",
         };
     };
     rpc AddTransaction(AddTransactionCommand) returns (FraudDetectionReport){
         option (google.api.http) = {
-            post: "/customers/{customer_id}/trans",
+            post: "/customers/add-trans",
             body: "*",
         };
     };
