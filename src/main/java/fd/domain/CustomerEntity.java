@@ -1,22 +1,26 @@
 package fd.domain;
 
-import akka.event.slf4j.Logger;
+import org.slf4j.Logger;
 import com.google.protobuf.Empty;
 import fd.Mappers;
 import fd.Service;
 import fd.persistence.Domain;
 import io.cloudstate.javasupport.EntityId;
 import io.cloudstate.javasupport.eventsourced.*;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @EventSourcedEntity(persistenceId = "customer", snapshotEvery = 20)
 public class CustomerEntity {
     private final String customerId;
     private Domain.Customer customer;
+    private static Logger log = LoggerFactory.getLogger(CustomerEntity.class);
 
     public CustomerEntity(@EntityId String customerId) {
         this.customerId = customerId;
@@ -45,10 +49,18 @@ public class CustomerEntity {
     }
     @CommandHandler
     public Service.CustomerState getCustomer(Service.GetCustomerCommand cmd, CommandContext ctx) {
+        if(customer == null) {
+            ctx.fail("Customer does not exist");
+            return null;
+        }
         return Mappers.toApi(customer).build();
     }
     @CommandHandler
     public Empty updateFraudDetectionRule(Service.UpdateFraudDetectionRuleCommand cmd, CommandContext ctx){
+        if(customer == null) {
+            ctx.fail("Customer does not exist");
+            return null;
+        }
         ctx.emit(Domain.FraudDetectionRuleUpdated.newBuilder()
                 .setRule(Mappers.fromApi(cmd.getRule()))
                 .build());
@@ -56,6 +68,11 @@ public class CustomerEntity {
     }
     @CommandHandler
     public Service.FraudDetectionReport addTransaction(Service.AddTransactionCommand cmd, CommandContext ctx){
+        log.info("addTransaction: {}",cmd);
+        if(customer == null) {
+            ctx.fail("Customer does not exist");
+            return null;
+        }
         Optional<Domain.Transaction> existingTrans = checkTransExists(cmd.getTrans().getTransId());
         if(existingTrans.isPresent())
             return Mappers.toApi(existingTrans.get().getFraudReport()).build();
@@ -73,19 +90,31 @@ public class CustomerEntity {
                 .setTrans(Mappers.fromApi(cmd.getTrans()).setFraudReport(fraudReport))
                 .build());
 
-        getTransactionsToRemove().map(transId->Domain.TransactionRemoved.newBuilder().setTransId(transId).build())
+       /* getTransactionsToRemove().stream()
+                                 .map(transId->Domain.TransactionRemoved.newBuilder().setTransId(transId).build())
                                  .forEach(ctx::emit);
-
+*/
         return Mappers.toApi(fraudReport.build()).build();
     }
 
-    private Stream<String> getTransactionsToRemove(){
+    private List<String> getTransactionsToRemove(){
         Instant now = Instant.now();
-        return
+        List<String> timeouted=
         customer.getTransList().stream().filter(t->{
             Instant transTimestamp = Instant.ofEpochMilli(t.getTimestamp());
             return transTimestamp.isBefore(now.minus(customer.getRule().getTransBacktrackHours(), ChronoUnit.HOURS));
-        }).map(Domain.Transaction::getTransId);
+        }).map(Domain.Transaction::getTransId).collect(Collectors.toList());
+        int newCount = customer.getTransList().size()-timeouted.size();
+        if(customer.getRule().getTransBacktrackMaxCount()>0 && newCount+1>customer.getRule().getTransBacktrackMaxCount()){
+            int index = customer.getRule().getTransBacktrackMaxCount()-1;
+            List<String> byCount=
+            customer.getTransList()
+                    .subList(0,index)
+                    .stream().map(Domain.Transaction::getTransId).collect(Collectors.toList());
+            timeouted.addAll(byCount);
+        }
+        return timeouted;
+
     }
 
     private Optional<Domain.Transaction> checkTransExists(String transId){
@@ -101,7 +130,7 @@ public class CustomerEntity {
     }
     @EventHandler
     public void fraudDetectionRuleUpdated(Domain.FraudDetectionRuleUpdated event) {
-        customer.toBuilder().setRule(event.getRule()).build();
+        customer=customer.toBuilder().setRule(event.getRule()).build();
     }
     @EventHandler
     public void transactionAdded(Domain.TransactionAdded event) {
@@ -111,7 +140,8 @@ public class CustomerEntity {
     }
     @EventHandler
     public void transactionRemoved(Domain.TransactionRemoved event) {
-        customer.getTransList().removeIf(t->t.getTransId().equals(event.getTransId()));
+        customer = customer.toBuilder().addAllTrans(customer.getTransList().stream().filter(t->!t.getTransId().equals(event.getTransId())).collect(Collectors.toList())).build();
+        //customer.getTransList().removeIf(t->t.getTransId().equals(event.getTransId()));
     }
 
 }

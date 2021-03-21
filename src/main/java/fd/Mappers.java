@@ -22,14 +22,16 @@ public class Mappers {
         return Domain.FraudDetectionRule.newBuilder()
                 .setRuleId(rule.getRuleId())
                 .setMaxAmountCents(rule.getMaxAmountCents())
-                .setTransBacktrackHours(rule.getTransBacktrackHours());
+                .setTransBacktrackHours(rule.getTransBacktrackHours())
+                .setTransBacktrackMaxCount(rule.getTransBacktrackMaxCount());
 
     }
     public static Service.FraudDetectionRule.Builder toApi(Domain.FraudDetectionRule rule){
         return Service.FraudDetectionRule.newBuilder()
                 .setRuleId(rule.getRuleId())
                 .setMaxAmountCents(rule.getMaxAmountCents())
-                .setTransBacktrackHours(rule.getTransBacktrackHours());
+                .setTransBacktrackHours(rule.getTransBacktrackHours())
+                .setTransBacktrackMaxCount(rule.getTransBacktrackMaxCount());
 
     }
     public static Domain.Transaction.Builder fromApi(Service.Transaction trans){

@@ -29,6 +29,7 @@ message FraudDetectionRule {
     string rule_id = 1;
     int32 max_amount_cents = 2;
     int32 trans_backtrack_hours = 3;
+    int32 trans_backtrack_max_count = 4;
 }
 
 message CustomerState {
@@ -58,7 +59,7 @@ message UpdateFraudDetectionRuleCommand {
 service CustomerFraudDetection {
     rpc CreateCustomer(CreateCustomerCommand) returns (google.protobuf.Empty){
         option (google.api.http) = {
-            post: "/customers/add",
+            post: "/customers/{customer_id}/add",
             body: "*",
         };
     };
@@ -69,13 +70,13 @@ service CustomerFraudDetection {
     };
     rpc UpdateFraudDetectionRule(UpdateFraudDetectionRuleCommand) returns (google.protobuf.Empty){
         option (google.api.http) = {
-            post: "/customers/update-fraud-detection-rule",
+            post: "/customers/{customer_id}/fraud-detection-rule",
             body: "*",
         };
     };
     rpc AddTransaction(AddTransactionCommand) returns (FraudDetectionReport){
         option (google.api.http) = {
-            post: "/customers/add-trans",
+            post: "/customers/{customer_id}/trans",
             body: "*",
         };
     };

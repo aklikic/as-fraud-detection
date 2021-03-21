@@ -20,6 +20,7 @@ message FraudDetectionRule {
   string rule_id = 1;
   int32 max_amount_cents = 2;
   int32 trans_backtrack_hours = 3;
+  int32 trans_backtrack_max_count = 4;
 }
 
 //state
