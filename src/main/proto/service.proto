@@ -59,7 +59,7 @@ message UpdateFraudDetectionRuleCommand {
 service CustomerFraudDetection {
     rpc CreateCustomer(CreateCustomerCommand) returns (google.protobuf.Empty){
         option (google.api.http) = {
-            post: "/customers/{customer_id}",
+            post: "/customers",
             body: "*",
         };
     };
