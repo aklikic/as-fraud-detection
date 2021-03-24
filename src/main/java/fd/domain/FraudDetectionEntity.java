@@ -1,7 +1,7 @@
 package fd.domain;
 
 import frauddetection.FraudDetectionCommon;
-import frauddetection.FraudDetectionServiceOuterClass;
+import frauddetection.Service;
 import frauddetection.domain.FraudDetectionDomain;
 import org.slf4j.Logger;
 import com.google.protobuf.Empty;
@@ -44,7 +44,7 @@ public class FraudDetectionEntity {
     //commands
 
     @CommandHandler
-    public Empty createFraudDetection(FraudDetectionServiceOuterClass.CreateFraudDetectionCommand cmd, CommandContext ctx) {
+    public Empty createFraudDetection(Service.CreateFraudDetectionCommand cmd, CommandContext ctx) {
         if(state!=null)
             return Empty.getDefaultInstance();
         ctx.emit(FraudDetectionDomain.FraudDetectionCreated.newBuilder()
@@ -55,7 +55,7 @@ public class FraudDetectionEntity {
         return Empty.getDefaultInstance();
     }
     @CommandHandler
-    public FraudDetectionCommon.FraudDetectionState getFraudDetection(FraudDetectionServiceOuterClass.GetFraudDetectionCommand cmd, CommandContext ctx) {
+    public FraudDetectionCommon.FraudDetectionState getFraudDetection(Service.GetFraudDetectionCommand cmd, CommandContext ctx) {
         if(state == null) {
             ctx.fail("Fraud detection does not exist");
             return null;
@@ -63,7 +63,7 @@ public class FraudDetectionEntity {
         return state;
     }
     @CommandHandler
-    public Empty updateFraudDetectionRule(FraudDetectionServiceOuterClass.UpdateFraudDetectionRuleCommand cmd, CommandContext ctx){
+    public Empty updateFraudDetectionRule(Service.UpdateFraudDetectionRuleCommand cmd, CommandContext ctx){
         if(state == null) {
             ctx.fail("Fraud detection does not exist");
             return null;
@@ -76,7 +76,7 @@ public class FraudDetectionEntity {
         return Empty.getDefaultInstance();
     }
     @CommandHandler
-    public FraudDetectionCommon.ScoredTransactionState addTransaction(FraudDetectionServiceOuterClass.AddTransactionCommand cmd, CommandContext ctx){
+    public FraudDetectionCommon.ScoredTransactionState addTransaction(Service.AddTransactionCommand cmd, CommandContext ctx){
         log.info("[{}] addTransaction: {}",cmd.getCustomerId(),cmd);
         if(state == null) {
             ctx.fail("Fraud detection does not exist");
@@ -158,6 +158,7 @@ public class FraudDetectionEntity {
 
         FraudDetectionCommon.ScoredTransactionState.Builder trans = FraudDetectionCommon.ScoredTransactionState.newBuilder();
         trans.setCustomerId(event.getCustomerId());
+        trans.setTransactionId(event.getTransactionId());
         trans.setAmountCents(event.getAmountCents());
         trans.setTimestamp(event.getTimestamp());
         trans.setRuleId(event.getRuleId());

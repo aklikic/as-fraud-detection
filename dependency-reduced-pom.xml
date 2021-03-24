@@ -4,7 +4,7 @@
   <groupId>lightbend</groupId>
   <artifactId>fraud-detection</artifactId>
   <name>fraud-detection</name>
-  <version>2.0-SNAPSHOT</version>
+  <version>2.1-SNAPSHOT</version>
   <build>
     <extensions>
       <extension>

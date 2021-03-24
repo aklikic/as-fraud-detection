@@ -2,7 +2,7 @@ package fd;
 
 import fd.domain.FraudDetectionEntity;
 import frauddetection.FraudDetectionCommon;
-import frauddetection.FraudDetectionServiceOuterClass;
+import frauddetection.Service;
 import frauddetection.domain.FraudDetectionDomain;
 import io.cloudstate.javasupport.eventsourced.CommandContext;
 import org.junit.Test;
@@ -25,7 +25,7 @@ public class CustomerFraudDetectionTest {
         String ruleId = "1";
         FraudDetectionEntity entity = createAndCreateFraudDetection(customerId,configMaxTransactionsCount,ruleId,ruleMaxAmountCents);
 
-        FraudDetectionServiceOuterClass.AddTransactionCommand addTrans = createAddCommand(transAmountCents);
+        Service.AddTransactionCommand addTrans = createAddCommand(transAmountCents);
         entity.addTransaction(addTrans,context);
 
         FraudDetectionDomain.ScoredTransactionAdded addedTrans = createAddedEvent(addTrans,ruleId,ruleMaxAmountCents);
@@ -54,20 +54,20 @@ public class CustomerFraudDetectionTest {
         entity.transactionAdded(addedTrans);
         Mockito.verify(context).emit(addedTrans);
 
-        FraudDetectionCommon.FraudDetectionState cs = entity.getFraudDetection(FraudDetectionServiceOuterClass.GetFraudDetectionCommand.newBuilder()
+        FraudDetectionCommon.FraudDetectionState cs = entity.getFraudDetection(Service.GetFraudDetectionCommand.newBuilder()
                                                                 .setCustomerId(customerId).build(),context);
         assertEquals(4,cs.getTransactionsCount());
         //TODO test transactionRemoved??
     }
 
-    private FraudDetectionServiceOuterClass.AddTransactionCommand createAddCommand(int transAmountCents){
-        return FraudDetectionServiceOuterClass.AddTransactionCommand.newBuilder()
+    private Service.AddTransactionCommand createAddCommand(int transAmountCents){
+        return Service.AddTransactionCommand.newBuilder()
                 .setTransactionId(UUID.randomUUID().toString())
                 .setAmountCents(transAmountCents)
                 .setTimestamp(System.currentTimeMillis())
                 .build();
     }
-    private FraudDetectionDomain.ScoredTransactionAdded createAddedEvent(FraudDetectionServiceOuterClass.AddTransactionCommand addTrans, String ruleId, int ruleMaxAmountCents){
+    private FraudDetectionDomain.ScoredTransactionAdded createAddedEvent(Service.AddTransactionCommand addTrans, String ruleId, int ruleMaxAmountCents){
         return FraudDetectionDomain.ScoredTransactionAdded.newBuilder()
                 .setCustomerId(addTrans.getCustomerId())
                 .setTransactionId(addTrans.getTransactionId())
@@ -84,7 +84,7 @@ public class CustomerFraudDetectionTest {
         FraudDetectionEntity entity = new FraudDetectionEntity(customerId);
         entity.setConfigMaxTransactionsCount(configMaxTransactionsCount);
 
-        FraudDetectionServiceOuterClass.CreateFraudDetectionCommand create = FraudDetectionServiceOuterClass.CreateFraudDetectionCommand.newBuilder()
+        Service.CreateFraudDetectionCommand create = Service.CreateFraudDetectionCommand.newBuilder()
                 .setCustomerId(customerId)
                 .setRuleId(ruleId)
                 .setMaxAmountCents(ruleMaxAmountCents)
