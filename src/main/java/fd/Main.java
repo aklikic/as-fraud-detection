@@ -1,16 +1,18 @@
 package fd;
 
-import fd.domain.CustomerEntity;
-import fd.persistence.Domain;
+import fd.domain.FraudDetectionEntity;
+
+import frauddetection.FraudDetectionServiceOuterClass;
+import frauddetection.domain.FraudDetectionDomain;
 import io.cloudstate.javasupport.*;
 
 public final class Main {
     public static final void main(String[] args) throws Exception {
         new CloudState()
                 .registerEventSourcedEntity(
-                        CustomerEntity.class,
-                        Service.getDescriptor().findServiceByName("CustomerFraudDetection"),
-                        Domain.getDescriptor())
+                        FraudDetectionEntity.class,
+                        FraudDetectionServiceOuterClass.getDescriptor().findServiceByName("FraudDetectionService"),
+                        FraudDetectionDomain.getDescriptor())
                 .start()
                 .toCompletableFuture()
                 .get();

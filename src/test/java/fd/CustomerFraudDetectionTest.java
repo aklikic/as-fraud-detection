@@ -1,7 +1,9 @@
 package fd;
 
-import fd.domain.CustomerEntity;
-import fd.persistence.Domain;
+import fd.domain.FraudDetectionEntity;
+import frauddetection.FraudDetectionCommon;
+import frauddetection.FraudDetectionServiceOuterClass;
+import frauddetection.domain.FraudDetectionDomain;
 import io.cloudstate.javasupport.eventsourced.CommandContext;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -12,20 +14,21 @@ import static org.junit.Assert.*;
 
 public class CustomerFraudDetectionTest {
 
-    private final static String ruleId = "1";
+
     @Test
     public void addTransaction(){
         CommandContext context = Mockito.mock(CommandContext.class);
         String customerId = "1";
         int transAmountCents = 1001;
         int ruleMaxAmountCents = 1000;
-        int ruleMaxCount = 2;
-        CustomerEntity entity = createAndCreateCustomer(customerId,ruleMaxAmountCents,ruleMaxCount);
+        int configMaxTransactionsCount = 2;
+        String ruleId = "1";
+        FraudDetectionEntity entity = createAndCreateFraudDetection(customerId,configMaxTransactionsCount,ruleId,ruleMaxAmountCents);
 
-        Service.AddTransactionCommand addTrans = createAddCommand(transAmountCents);
+        FraudDetectionServiceOuterClass.AddTransactionCommand addTrans = createAddCommand(transAmountCents);
         entity.addTransaction(addTrans,context);
 
-        Domain.TransactionAdded addedTrans = createAddedEvent(addTrans,ruleMaxAmountCents);
+        FraudDetectionDomain.ScoredTransactionAdded addedTrans = createAddedEvent(addTrans,ruleId,ruleMaxAmountCents);
         entity.transactionAdded(addedTrans);
         Mockito.verify(context).emit(addedTrans);
 
@@ -33,66 +36,66 @@ public class CustomerFraudDetectionTest {
         addTrans = createAddCommand(transAmountCents);
         entity.addTransaction(addTrans,context);
 
-        addedTrans = createAddedEvent(addTrans,ruleMaxAmountCents);
+        addedTrans = createAddedEvent(addTrans,ruleId,ruleMaxAmountCents);
         entity.transactionAdded(addedTrans);
         Mockito.verify(context).emit(addedTrans);
 
         addTrans = createAddCommand(transAmountCents);
         entity.addTransaction(addTrans,context);
 
-        addedTrans = createAddedEvent(addTrans,ruleMaxAmountCents);
+        addedTrans = createAddedEvent(addTrans,ruleId,ruleMaxAmountCents);
         entity.transactionAdded(addedTrans);
         Mockito.verify(context).emit(addedTrans);
 
         addTrans = createAddCommand(transAmountCents);
         entity.addTransaction(addTrans,context);
 
-        addedTrans = createAddedEvent(addTrans,ruleMaxAmountCents);
+        addedTrans = createAddedEvent(addTrans,ruleId,ruleMaxAmountCents);
         entity.transactionAdded(addedTrans);
         Mockito.verify(context).emit(addedTrans);
 
-//        Service.CustomerState cs = entity.getCustomer(Service.GetCustomerCommand.newBuilder().setCustomerId(customerId).build(),context);
-//        assertEquals(2,cs.getTransCount());
+        FraudDetectionCommon.FraudDetectionState cs = entity.getFraudDetection(FraudDetectionServiceOuterClass.GetFraudDetectionCommand.newBuilder()
+                                                                .setCustomerId(customerId).build(),context);
+        assertEquals(4,cs.getTransactionsCount());
+        //TODO test transactionRemoved??
     }
 
-    private Service.AddTransactionCommand createAddCommand(int transAmountCents){
-        return Service.AddTransactionCommand.newBuilder()
-                .setTrans(Service.Transaction.newBuilder()
-                        .setAmountCents(transAmountCents)
-                        .setTimestamp(System.currentTimeMillis())
-                        .setTransId(UUID.randomUUID().toString())
-                        .build())
+    private FraudDetectionServiceOuterClass.AddTransactionCommand createAddCommand(int transAmountCents){
+        return FraudDetectionServiceOuterClass.AddTransactionCommand.newBuilder()
+                .setTransactionId(UUID.randomUUID().toString())
+                .setAmountCents(transAmountCents)
+                .setTimestamp(System.currentTimeMillis())
                 .build();
     }
-    private Domain.TransactionAdded createAddedEvent(Service.AddTransactionCommand addTrans,int ruleMaxAmountCents){
-        return Domain.TransactionAdded.newBuilder()
-                .setTrans(Mappers.fromApi(addTrans.getTrans())
-                        .setFraudReport(Domain.FraudDetectionReport.newBuilder()
-                                .setRiskScore(addTrans.getTrans().getAmountCents()>ruleMaxAmountCents?100:0)
-                                .setRuleId(ruleId)
-                                .setPotentialFraud(addTrans.getTrans().getAmountCents()>ruleMaxAmountCents)
-                                .build()))
+    private FraudDetectionDomain.ScoredTransactionAdded createAddedEvent(FraudDetectionServiceOuterClass.AddTransactionCommand addTrans, String ruleId, int ruleMaxAmountCents){
+        return FraudDetectionDomain.ScoredTransactionAdded.newBuilder()
+                .setCustomerId(addTrans.getCustomerId())
+                .setTransactionId(addTrans.getTransactionId())
+                .setAmountCents(addTrans.getAmountCents())
+                .setTimestamp(addTrans.getTimestamp())
+                .setRuleId(ruleId)
+                .setPotentialFraud(addTrans.getAmountCents()>ruleMaxAmountCents)
+                .setRiskScore(addTrans.getAmountCents()>ruleMaxAmountCents?100:0)
                 .build();
     }
 
-    private CustomerEntity createAndCreateCustomer(String customerId, int ruleMaxAmountCents, int ruleMaxCount){
+    private FraudDetectionEntity createAndCreateFraudDetection(String customerId, int configMaxTransactionsCount, String ruleId, int ruleMaxAmountCents){
         CommandContext context = Mockito.mock(CommandContext.class);
-        CustomerEntity entity = new CustomerEntity(customerId);
-        Domain.Customer dCustomer = Domain.Customer.newBuilder()
-                .setRule(Domain.FraudDetectionRule.newBuilder()
-                        .setRuleId(ruleId)
-                        .setTransBacktrackHours(1)
-                        .setMaxAmountCents(ruleMaxAmountCents)
-                        .setTransBacktrackMaxCount(ruleMaxCount)
-                        .build())
-                .build();
-        Service.CreateCustomerCommand create = Service.CreateCustomerCommand.newBuilder()
+        FraudDetectionEntity entity = new FraudDetectionEntity(customerId);
+        entity.setConfigMaxTransactionsCount(configMaxTransactionsCount);
+
+        FraudDetectionServiceOuterClass.CreateFraudDetectionCommand create = FraudDetectionServiceOuterClass.CreateFraudDetectionCommand.newBuilder()
                 .setCustomerId(customerId)
-                .setRule(Mappers.toApi(dCustomer.getRule()))
+                .setRuleId(ruleId)
+                .setMaxAmountCents(ruleMaxAmountCents)
                 .build();
-        entity.createCustomer(create,context);
-        Domain.CustomerCreated created = Domain.CustomerCreated.newBuilder().setCustomer(dCustomer).build();
-        entity.customerCreated(created);
+        entity.createFraudDetection(create,context);
+        FraudDetectionDomain.FraudDetectionCreated created = FraudDetectionDomain.FraudDetectionCreated.newBuilder()
+                .setCustomerId(customerId)
+                .setRuleId(ruleId)
+                .setMaxAmountCents(ruleMaxAmountCents)
+                .build();
+        entity.fraudDetectionCreated(created);
         Mockito.verify(context).emit(created);
 
         return entity;
