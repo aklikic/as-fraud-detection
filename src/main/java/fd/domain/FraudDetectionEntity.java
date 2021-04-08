@@ -108,7 +108,7 @@ public class FraudDetectionEntity {
                 .build());
 
         List<FraudDetectionDomain.ScoredTransactionRemoved> transToRemove = getTransactionsToRemove(trans);
-        log.info("[{}] Trans to remove: {}",cmd.getCustomerId(),transToRemove.size());
+        log.info("[{}] Trans to remove: {}/{}",cmd.getCustomerId(),transToRemove.size(),(state.getTransactionsCount()+1));
         transToRemove.forEach(ctx::emit);
 
         return trans;
@@ -118,10 +118,10 @@ public class FraudDetectionEntity {
         FraudDetectionCommon.FraudDetectionState newState = state.toBuilder().addTransactions(trans).build();
         if(newState.getTransactionsCount()>configMaxTransactionsCount)
             return
-            newState.getTransactionsList().subList(0,configMaxTransactionsCount-1).stream()
+            newState.getTransactionsList().subList(0, newState.getTransactionsCount()-configMaxTransactionsCount-1).stream()
                     .map(t -> FraudDetectionDomain.ScoredTransactionRemoved.newBuilder()
                             .setCustomerId(trans.getCustomerId())
-                            .setTransactionId(trans.getTransactionId())
+                            .setTransactionId(t.getTransactionId())
                             .build()
                     ).collect(Collectors.toList());
 
@@ -169,9 +169,11 @@ public class FraudDetectionEntity {
     }
     @EventHandler
     public void transactionRemoved(FraudDetectionDomain.ScoredTransactionRemoved event) {
-        List<FraudDetectionCommon.ScoredTransactionState> trans = state.getTransactionsList();
-        trans.removeIf(t->t.getTransactionId()==event.getTransactionId());
-        state = state.toBuilder().addAllTransactions(trans).build();
+        log.info("[{}] Trans list size before remove: {}",state.getCustomerId(),state.getTransactionsCount());
+        List<FraudDetectionCommon.ScoredTransactionState> trans =
+                state.getTransactionsList().stream().filter(t->t.getTransactionId().equals(event.getTransactionId())).collect(Collectors.toList());
+        log.info("[{}] Trans list size after remove: {}",state.getCustomerId(),trans.size());
+        state = state.toBuilder().clearTransactions().addAllTransactions(trans).build();
     }
 
 }
